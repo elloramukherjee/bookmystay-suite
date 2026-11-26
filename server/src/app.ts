@@ -77,14 +77,27 @@ export function createApp(): Express {
   app.use(cookieParser());
   app.use(sanitizeBody);
 
-  const api = Router();
-  api.use(globalLimiter);
-  api.get('/health', (_req, res) => {
+  // Health: 200 only when the database is reachable, so platforms restart or hold traffic otherwise.
+  const health: express.RequestHandler = (_req, res) => {
     const db = databaseState();
     res.status(db === 'connected' ? 200 : 503).json({
+      success: db === 'connected',
+      message: db === 'connected' ? 'BookMyStay API is healthy' : 'BookMyStay API is running but the database is unreachable',
       data: { status: db === 'connected' ? 'ok' : 'degraded', db, transactions: supportsTransactions(), uptime: Math.round(process.uptime()) },
     });
-  });
+  };
+  // Short alias for hosting platforms' health checks.
+  app.get('/api/health', health);
+  // API root. When the web app is served from here (SERVE_CLIENT), "/" is the website instead.
+  if (!env.SERVE_CLIENT) {
+    app.get('/', (_req, res) => {
+      res.json({ success: true, message: 'Welcome to BookMyStay API', status: 'Running', api: '/api/v1', health: '/api/v1/health' });
+    });
+  }
+
+  const api = Router();
+  api.use(globalLimiter);
+  api.get('/health', health);
   api.use('/auth', authRouter);
   api.use('/users', usersRouter);
   api.use('/hotels', hotelsRouter);

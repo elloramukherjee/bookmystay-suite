@@ -15,7 +15,8 @@ async function main(): Promise<void> {
     if (r.level !== 'ok') logger[r.level === 'error' ? 'error' : 'warn']({ area: r.area }, `Readiness: ${r.message}`);
   }
 
-  const server = app.listen(env.PORT, () => {
+  // 0.0.0.0: reachable from outside a container / on hosting platforms.
+  const server = app.listen(env.PORT, '0.0.0.0', () => {
     logger.info(
       {
         port: env.PORT,
