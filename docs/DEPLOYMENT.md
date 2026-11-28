@@ -64,6 +64,19 @@ works. Copy the CSP from `server/src/web.ts` into the static host's headers.
 5. Smoke test: open the site, search dates, open a room, sign in as staff, open the dashboard, Guests and Concierge Desk.
 6. Make a test booking with your own phone number and cancel it. With Razorpay, pay ₹1 on your own card first.
 
+## Troubleshooting startup
+
+The server checks its configuration before starting and lists every problem at once (no secrets are printed):
+
+| Error | Fix |
+|---|---|
+| `MONGODB_URI: is not set or is empty` | The variable is missing or blank in the hosting dashboard. Atlas → Database → **Connect** → Drivers → copy the `mongodb+srv://…` string, put in your database user's password and add `/bookmystay` before `?`. Set it as `MONGODB_URI` and redeploy. In Atlas → Network Access, allow the host's outbound IPs (or `0.0.0.0/0` for a pilot). |
+| `MONGODB_URI: points at localhost` | A hosted server has no database of its own. Use the Atlas string (or the Compose `mongo` service). |
+| `JWT_…: must be at least 32 characters` / `looks like a placeholder` / `must differ` | Generate two different secrets (command under Prerequisites). |
+| `CLIENT_URL: must use https://` | Set it to your public `https://` address. |
+| `PAYMENT_PROVIDER: The mock payment provider is not allowed` | Use `pay_at_hotel`, or `razorpay` with its three keys. |
+| `MongoServerSelectionError` after the checks pass | The URI is valid but unreachable: wrong password, Atlas Network Access, or the cluster is paused. |
+
 ## Rollback
 
 Deploys are stateless images. Roll back by redeploying the previous image or commit (platform "rollback" button, or

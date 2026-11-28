@@ -46,8 +46,20 @@ describe('production configuration is refused when unsafe', () => {
     ['localhost origin', { CLIENT_URL: 'http://localhost:5173' }, 'public origin'],
     ['default IP salt', { IP_HASH_SALT: undefined }, 'IP_HASH_SALT'],
     ['an SMS gateway this version cannot use', { SMS_PROVIDER: 'msg91' }, 'Only "console" is available'],
+    // Hosting dashboards often keep a variable with an empty value (the crash reported from deployment).
+    ['an empty MONGODB_URI', { MONGODB_URI: '' }, "MONGODB_URI: is not set or is empty. Add it in your hosting provider's environment variables"],
+    ['a missing MONGODB_URI', { MONGODB_URI: undefined }, 'MongoDB Atlas connection string'],
+    ['a localhost MONGODB_URI', { MONGODB_URI: 'mongodb://127.0.0.1:27017/bookmystay' }, 'points at localhost'],
+    ['a malformed MONGODB_URI', { MONGODB_URI: 'cluster0.abc.mongodb.net' }, 'must be a MongoDB connection string starting with mongodb:// or mongodb+srv://'],
   ])('%s', (_name, overrides, message) => {
     expect(issues(overrides)).toContain(message);
+  });
+});
+
+describe('development configuration', () => {
+  it('an empty MONGODB_URI falls back to the local database outside production', () => {
+    const dev = loadEnv({ NODE_ENV: 'development', MONGODB_URI: '  ', JWT_ACCESS_SECRET: PROD.JWT_ACCESS_SECRET, JWT_REFRESH_SECRET: PROD.JWT_REFRESH_SECRET });
+    expect(dev.MONGODB_URI).toBe('mongodb://127.0.0.1:27017/bookmystay');
   });
 });
 

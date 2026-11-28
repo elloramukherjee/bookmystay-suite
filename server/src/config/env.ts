@@ -8,11 +8,24 @@ const optionalString = z
   .optional()
   .transform((v) => (v ? v : undefined));
 
+/** Local development database, used only when MONGODB_URI is unset outside production. */
+const DEV_MONGODB_URI = 'mongodb://127.0.0.1:27017/bookmystay';
+/** Hosting dashboards often keep a variable with an empty value; treat that as "not set". */
+const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+const ATLAS_EXAMPLE = 'mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/bookmystay';
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(4000),
-    MONGODB_URI: z.string().min(1).default('mongodb://127.0.0.1:27017/bookmystay'),
+    MONGODB_URI: z.preprocess(
+      blankToUndefined,
+      z
+        .string()
+        .trim()
+        .regex(/^mongodb(\+srv)?:\/\/\S+$/, `must be a MongoDB connection string starting with mongodb:// or mongodb+srv:// (e.g. ${ATLAS_EXAMPLE})`)
+        .optional(),
+    ),
 
     JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
     JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
@@ -69,6 +82,20 @@ const envSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return;
+    if (!env.MONGODB_URI) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MONGODB_URI'],
+        message: `is not set or is empty. Add it in your hosting provider's environment variables: your MongoDB Atlas connection string, e.g. ${ATLAS_EXAMPLE}`,
+      });
+    } else if (/@?(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.MONGODB_URI)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MONGODB_URI'],
+        message:
+          'points at localhost, but a hosted server has no database of its own. Use your MongoDB Atlas connection string (or the compose "mongo" service)',
+      });
+    }
     for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
       const value = env[key].toLowerCase();
       if (WEAK_SECRET_MARKERS.some((m) => value.includes(m))) {
@@ -99,7 +126,8 @@ const envSchema = z
     }
   });
 
-export type Env = z.infer<typeof envSchema> & {
+export type Env = Omit<z.infer<typeof envSchema>, 'MONGODB_URI'> & {
+  MONGODB_URI: string;
   clientOrigins: string[];
   isProduction: boolean;
   isTest: boolean;
@@ -118,6 +146,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const e = parsed.data;
   return {
     ...e,
+    MONGODB_URI: e.MONGODB_URI ?? DEV_MONGODB_URI,
     clientOrigins: e.CLIENT_URL.split(',')
       .map((s) => s.trim().replace(/\/$/, ''))
       .filter(Boolean),
