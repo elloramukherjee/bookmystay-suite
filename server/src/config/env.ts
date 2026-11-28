@@ -13,6 +13,8 @@ const DEV_MONGODB_URI = 'mongodb://127.0.0.1:27017/bookmystay';
 /** Hosting dashboards often keep a variable with an empty value; treat that as "not set". */
 const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
 const ATLAS_EXAMPLE = 'mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/bookmystay';
+/** Railway reference variable: the MongoDB service's private URL plus the database name (MONGO_URL has none). */
+const RAILWAY_EXAMPLE = '${{MongoDB.MONGO_URL}}/bookmystay?authSource=admin';
 
 const envSchema = z
   .object({
@@ -86,14 +88,20 @@ const envSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['MONGODB_URI'],
-        message: `is not set or is empty. Add it in your hosting provider's environment variables: your MongoDB Atlas connection string, e.g. ${ATLAS_EXAMPLE}`,
+        message: `is not set or is empty. Add it in your hosting provider's environment variables: your MongoDB Atlas connection string, e.g. ${ATLAS_EXAMPLE}, or on Railway ${RAILWAY_EXAMPLE}`,
       });
     } else if (/@?(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.MONGODB_URI)) {
       ctx.addIssue({
         code: 'custom',
         path: ['MONGODB_URI'],
-        message:
-          'points at localhost, but a hosted server has no database of its own. Use your MongoDB Atlas connection string (or the compose "mongo" service)',
+        message: `points at localhost, but a hosted server has no database of its own. Use your MongoDB Atlas connection string, the compose "mongo" service, or on Railway ${RAILWAY_EXAMPLE}`,
+      });
+    } else if (!/^mongodb(\+srv)?:\/\/[^/?]+\/[^/?]+/.test(env.MONGODB_URI)) {
+      // Without a path the driver silently uses the "test" database: the app would start against an empty database.
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MONGODB_URI'],
+        message: `has no database name, so MongoDB would use the empty "test" database. Add "/bookmystay" after the host, e.g. ${RAILWAY_EXAMPLE}`,
       });
     }
     for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {

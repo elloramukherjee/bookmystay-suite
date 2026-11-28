@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { describeMongoUri } from '../config/db.js';
 import { loadEnv } from '../config/env.js';
 import { signGuestToken } from '../modules/bookings/guestToken.js';
 import { signChatToken } from '../modules/chatbot/chatToken.js';
@@ -51,8 +52,24 @@ describe('production configuration is refused when unsafe', () => {
     ['a missing MONGODB_URI', { MONGODB_URI: undefined }, 'MongoDB Atlas connection string'],
     ['a localhost MONGODB_URI', { MONGODB_URI: 'mongodb://127.0.0.1:27017/bookmystay' }, 'points at localhost'],
     ['a malformed MONGODB_URI', { MONGODB_URI: 'cluster0.abc.mongodb.net' }, 'must be a MongoDB connection string starting with mongodb:// or mongodb+srv://'],
+    // Railway's MONGO_URL has no database name: used as-is the app would run against an empty "test" database.
+    ['a MONGODB_URI without a database name', { MONGODB_URI: 'mongodb://mongo:pw@mongodb.railway.internal:27017' }, 'has no database name'],
+    ['a MONGODB_URI with only a query string', { MONGODB_URI: 'mongodb://mongo:pw@mongodb.railway.internal:27017/?authSource=admin' }, 'has no database name'],
   ])('%s', (_name, overrides, message) => {
     expect(issues(overrides)).toContain(message);
+  });
+  it('accepts a Railway private-network URI with the database name', () => {
+    expect(issues({ MONGODB_URI: 'mongodb://mongo:pw@mongodb.railway.internal:27017/bookmystay?authSource=admin' })).toBe('');
+  });
+});
+
+describe('MongoDB connection logging', () => {
+  it('never includes credentials or query options', () => {
+    expect(describeMongoUri('mongodb://mongo:s3cr3t@mongodb.railway.internal:27017/bookmystay?authSource=admin')).toEqual({
+      hosts: 'mongodb.railway.internal:27017',
+      database: 'bookmystay',
+    });
+    expect(describeMongoUri('mongodb+srv://u:p@cluster0.x.mongodb.net/?retryWrites=true')).toEqual({ hosts: 'cluster0.x.mongodb.net', database: 'test' });
   });
 });
 

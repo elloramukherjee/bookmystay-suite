@@ -12,3 +12,24 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Logs and debug output
+npm-debug.log*
+.npm/
+.eslintcache
+
+# Database dumps (mongodump output must never be committed: it contains guest data)
+dump/
+mongo-backup/
+*.bson
+*.archive
+*.gz
+
+# Hosting / platform CLIs
+.railway/
+.vercel/
+.netlify/
+
+# OS / editor
+Thumbs.db
+*.swp

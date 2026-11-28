@@ -24,8 +24,9 @@ async function main(): Promise<void> {
         gemini: env.geminiConfigured ? 'configured' : 'not configured',
         whatsapp: env.whatsappConfigured ? 'cloud-api' : 'simulator',
         payments: env.PAYMENT_PROVIDER,
+        web: env.SERVE_CLIENT ? 'served from this process' : 'not served (SERVE_CLIENT=false)',
       },
-      `BookMyStay API listening on http://localhost:${env.PORT}/api/v1`,
+      `BookMyStay listening on 0.0.0.0:${env.PORT} (API at /api/v1)`,
     );
   });
 

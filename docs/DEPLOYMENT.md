@@ -26,6 +26,9 @@ All variables are listed in `deploy/.env.production.example`.
 
 ## Option A — Render or Railway (Docker, managed TLS) — recommended for the pilot
 
+> **Railway with its own MongoDB service (private networking):** follow [RAILWAY.md](RAILWAY.md). `railway.json`
+> already configures the Dockerfile build and health check.
+
 1. Create a MongoDB Atlas cluster. Add the platform's egress IPs to the Atlas IP access list (or `0.0.0.0/0` with a
    strong password for a pilot) and copy the connection string.
 2. New **Web Service** from this repository, runtime **Docker** (the root `Dockerfile`). Health check path: `/api/v1/health`.
